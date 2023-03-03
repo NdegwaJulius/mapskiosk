@@ -1,9 +1,20 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 
+
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+
+const admin = require('firebase-admin');
+const serviceAccount = require('./serviceAccount.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: 'https://kiosk-3444d-default-rtdb.firebaseio.com'
+});
+
+const database = admin.database();
 
 let registration = {
     name: '',
@@ -51,12 +62,16 @@ app.post('/', (req, res) => {
         // Save shop license number and ask for ID
         registration.licenseNumber = text.slice(2);
         response = `CON Enter your ID number`;
-    } else if (text.startsWith('1*') && registration.name && registration.location && registration.licenseNumber && !registration.id) {
-
+      } else if (text.startsWith('1*') && registration.name && registration.location && registration.licenseNumber && !registration.id) {
         // Save ID number and terminate
         registration.id = text.slice(2);
+    
+        // Save the registration information to Firebase
+        const ref = database.ref('registrations').push();
+        ref.set(registration);
+    
         response = `END Thank you for registering your shop with us!`;
-
+    
         // Clear registration object for next registration
         registration = {
             name: '',
